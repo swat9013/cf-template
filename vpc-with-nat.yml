@@ -1,0 +1,323 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  ProjectId:
+    Description: Project name id.
+    Type: String
+    MinLength: "3"
+    ConstraintDescription: must specify Project id.
+  MyIP:
+    Description: local global ip.
+    Type: String
+    ConstraintDescription: must specify my ip.
+Resources:
+  MyVpc:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      InstanceTenancy: default
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"vpc" ] ]
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"public" ] ]
+  PublicSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"public" ] ]
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"private" ] ]
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"private" ] ]
+  Myigw:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"igw" ] ]
+  MyNatgw:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - EIP
+          - AllocationId
+      SubnetId: !Ref PublicSubnet1
+  EIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  Myacl:
+    Type: 'AWS::EC2::NetworkAcl'
+    Properties:
+      VpcId: !Ref MyVpc
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"public" ] ]
+  NATRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"natgw" ] ]
+  sgalb:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: alb-security
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"alb", "sg" ] ]
+  sgrds:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: rds-security
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"rds", "sg" ] ]
+  sgec2:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: ec2-security
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"ec2", "sg" ] ]
+  sgredis:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: redis-security
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"redis", "sg" ] ]
+  acl1:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: 'true'
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId: !Ref Myacl
+  acl2:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId: !Ref Myacl
+  subnetacl1:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref Myacl
+      SubnetId: !Ref PublicSubnet2
+  subnetacl2:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref Myacl
+      SubnetId: !Ref PrivateSubnet2
+  subnetacl3:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref Myacl
+      SubnetId: !Ref PrivateSubnet1
+  subnetacl4:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref Myacl
+      SubnetId: !Ref PublicSubnet1
+  gw1:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref MyVpc
+      InternetGatewayId: !Ref Myigw
+  subnetroute1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+  subnetroute2:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+  subnetroute3:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref NATRouteTable
+      SubnetId: !Ref PrivateSubnet2
+  subnetroute4:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref NATRouteTable
+      SubnetId: !Ref PrivateSubnet1
+  route1:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref Myigw
+    DependsOn: gw1
+  route2:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref NATRouteTable
+      NatGatewayId: !Ref MyNatgw
+  MyDhcpOption:
+    Type: 'AWS::EC2::DHCPOptions'
+    Properties:
+      DomainNameServers:
+        - AmazonProvidedDNS
+  dchpassoc1:
+    Type: 'AWS::EC2::VPCDHCPOptionsAssociation'
+    Properties:
+      VpcId: !Ref MyVpc
+      DhcpOptionsId: !Ref MyDhcpOption
+  ingress1:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgalb
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+      CidrIp: !Ref MyIP
+  ingress2:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgalb
+      IpProtocol: tcp
+      FromPort: '443'
+      ToPort: '443'
+      CidrIp: !Ref MyIP
+  ingress3:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgrds
+      IpProtocol: tcp
+      FromPort: '5432'
+      ToPort: '5432'
+      SourceSecurityGroupId: !Ref sgec2
+      SourceSecurityGroupOwnerId: '804186154141'
+  ingress4:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgrds
+      IpProtocol: tcp
+      FromPort: '5432'
+      ToPort: '5432'
+      CidrIp: !Ref MyIP
+  ingress5:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgec2
+      IpProtocol: tcp
+      FromPort: '32768'
+      ToPort: '65535'
+      SourceSecurityGroupId: !Ref sgalb
+      SourceSecurityGroupOwnerId: '804186154141'
+  ingress6:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgec2
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+      SourceSecurityGroupId: !Ref sgec2
+      SourceSecurityGroupOwnerId: '804186154141'
+  ingress7:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgec2
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+      CidrIp: !Ref MyIP
+  ingress8:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgredis
+      IpProtocol: tcp
+      FromPort: '6379'
+      ToPort: '6379'
+      SourceSecurityGroupId: !Ref sgec2
+      SourceSecurityGroupOwnerId: '804186154141'
+  ingress9:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgredis
+      IpProtocol: tcp
+      FromPort: '6379'
+      ToPort: '6379'
+      CidrIp: !Ref MyIP
+  egress1:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !Ref sgalb
+      IpProtocol: '-1'
+      CidrIp: 0.0.0.0/0
+  egress2:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !Ref sgrds
+      IpProtocol: '-1'
+      CidrIp: 0.0.0.0/0
+  egress3:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !Ref sgec2
+      IpProtocol: '-1'
+      CidrIp: 0.0.0.0/0
+  egress4:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !Ref sgredis
+      IpProtocol: '-1'
+      CidrIp: 0.0.0.0/0
