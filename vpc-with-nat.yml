@@ -128,6 +128,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Join [ "-", [ "Ref":"ProjectId" ,"ec2", "sg" ] ]
+  sgredash:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: redash-security
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ "Ref":"ProjectId" ,"redash", "sg" ] ]
   sgredis:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -221,7 +229,7 @@ Resources:
     Properties:
       VpcId: !Ref MyVpc
       DhcpOptionsId: !Ref MyDhcpOption
-  ingress1:
+  sgalbIngress1:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgalb
@@ -229,7 +237,7 @@ Resources:
       FromPort: '80'
       ToPort: '80'
       CidrIp: !Ref MyIP
-  ingress2:
+  sgalbIngress2:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgalb
@@ -237,7 +245,7 @@ Resources:
       FromPort: '443'
       ToPort: '443'
       CidrIp: !Ref MyIP
-  ingress3:
+  sgrdsIngress1:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgrds
@@ -245,8 +253,7 @@ Resources:
       FromPort: '5432'
       ToPort: '5432'
       SourceSecurityGroupId: !Ref sgec2
-      SourceSecurityGroupOwnerId: '804186154141'
-  ingress4:
+  sgrdsIngress2:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgrds
@@ -254,7 +261,15 @@ Resources:
       FromPort: '5432'
       ToPort: '5432'
       CidrIp: !Ref MyIP
-  ingress5:
+  sgrdsIngress3:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgrds
+      IpProtocol: tcp
+      FromPort: '5432'
+      ToPort: '5432'
+      SourceSecurityGroupId: !Ref sgredash
+  sgec2Ingress1:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgec2
@@ -262,8 +277,7 @@ Resources:
       FromPort: '32768'
       ToPort: '65535'
       SourceSecurityGroupId: !Ref sgalb
-      SourceSecurityGroupOwnerId: '804186154141'
-  ingress6:
+  sgec2Ingress2:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgec2
@@ -271,8 +285,7 @@ Resources:
       FromPort: '22'
       ToPort: '22'
       SourceSecurityGroupId: !Ref sgec2
-      SourceSecurityGroupOwnerId: '804186154141'
-  ingress7:
+  sgec2Ingress3:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgec2
@@ -280,7 +293,7 @@ Resources:
       FromPort: '22'
       ToPort: '22'
       CidrIp: !Ref MyIP
-  ingress8:
+  sgredisIngress1:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgredis
@@ -288,8 +301,7 @@ Resources:
       FromPort: '6379'
       ToPort: '6379'
       SourceSecurityGroupId: !Ref sgec2
-      SourceSecurityGroupOwnerId: '804186154141'
-  ingress9:
+  sgredisIngress2:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref sgredis
@@ -297,27 +309,27 @@ Resources:
       FromPort: '6379'
       ToPort: '6379'
       CidrIp: !Ref MyIP
-  egress1:
-    Type: 'AWS::EC2::SecurityGroupEgress'
+  sgredashIngress1:
+    Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
-      GroupId: !Ref sgalb
-      IpProtocol: '-1'
-      CidrIp: 0.0.0.0/0
-  egress2:
-    Type: 'AWS::EC2::SecurityGroupEgress'
+      GroupId: !Ref sgredash
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+      CidrIp: !Ref MyIP
+  sgredashIngress2:
+    Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
-      GroupId: !Ref sgrds
-      IpProtocol: '-1'
-      CidrIp: 0.0.0.0/0
-  egress3:
-    Type: 'AWS::EC2::SecurityGroupEgress'
+      GroupId: !Ref sgredash
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+      CidrIp: !Ref MyIP
+  sgredashIngress3:
+    Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
-      GroupId: !Ref sgec2
-      IpProtocol: '-1'
-      CidrIp: 0.0.0.0/0
-  egress4:
-    Type: 'AWS::EC2::SecurityGroupEgress'
-    Properties:
-      GroupId: !Ref sgredis
-      IpProtocol: '-1'
-      CidrIp: 0.0.0.0/0
+      GroupId: !Ref sgredash
+      IpProtocol: tcp
+      FromPort: '443'
+      ToPort: '443'
+      CidrIp: !Ref MyIP
