@@ -2,14 +2,6 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   AWS CloudFormation template to create resources required to run tasks on an
   ECS cluster.
-Mappings:
-  VpcCidrs:
-    vpc:
-      cidr: 10.0.0.0/16
-    pubsubnet1:
-      cidr: 10.0.0.0/24
-    pubsubnet2:
-      cidr: 10.0.1.0/24
 Parameters:
   EcsAmiId:
     Type: String
@@ -63,16 +55,6 @@ Parameters:
       Optional - Existing security group to associate the container instances.
       Creates one by default.
     Default: ''
-  SourceCidr:
-    Type: String
-    Description: Optional - CIDR/IP range for EcsPort - defaults to 0.0.0.0/0
-    Default: 0.0.0.0/0
-  EcsPort:
-    Type: String
-    Description: >-
-      Optional - Security Group port to open on ECS instances - defaults to port
-      80
-    Default: '80'
   AssociatePublicIpAddress:
     Type: String
     Description: >-
